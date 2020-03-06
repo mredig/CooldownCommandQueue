@@ -3,23 +3,24 @@ import Foundation
 
 public class CooldownCommandQueue {
 
-	private var internalQueue = DispatchQueue(label: "com.redeggproductions.InternalCooldownQueue")
+	private var propertyQueue = DispatchQueue(label: "com.redeggproductions.propertyQueue")
+	private var executionQueue = DispatchQueue(label: "com.redeggproductions.executionQueue")
 
 	private var _queuedItems = Queue<CooldownCommandOperation>()
 	private(set) var queuedItems: Queue<CooldownCommandOperation> {
-		get { internalQueue.sync { _queuedItems } }
-		set { internalQueue.sync { _queuedItems = newValue } }
+		get { propertyQueue.sync { _queuedItems } }
+		set { propertyQueue.sync { _queuedItems = newValue } }
 	}
 	private var _cooldown: Date?
 	private(set) var cooldown: Date? {
-		get { internalQueue.sync { _cooldown } }
-		set { internalQueue.sync { _cooldown = newValue } }
+		get { propertyQueue.sync { _cooldown } }
+		set { propertyQueue.sync { _cooldown = newValue } }
 	}
 
 	private var _currentItem: CooldownCommandOperation?
 	private(set) var currentItem: CooldownCommandOperation? {
-		get { internalQueue.sync { _currentItem } }
-		set { internalQueue.sync { _currentItem = newValue } }
+		get { propertyQueue.sync { _currentItem } }
+		set { propertyQueue.sync { _currentItem = newValue } }
 	}
 
 	private let _operationQueue: OperationQueue = {
@@ -28,7 +29,7 @@ public class CooldownCommandQueue {
 		return op
 	}()
 	private var operationQueue: OperationQueue {
-		internalQueue.sync { _operationQueue }
+		propertyQueue.sync { _operationQueue }
 	}
 
 	let errorCleanupTask: (() -> Void)?
@@ -40,7 +41,9 @@ public class CooldownCommandQueue {
 
 	public func addTask(_ task: CooldownCommandOperation) {
 		queuedItems.enqueue(task)
-		start()
+		executionQueue.sync {
+			start()
+		}
 	}
 
 	private func errorReset() {
@@ -68,19 +71,28 @@ public class CooldownCommandQueue {
 			}
 			guard let cooldown = task.cooldown else { fatalError("Task \(task) failed somehow!") }
 			self.cooldown = Date(timeIntervalSinceNow: cooldown)
-			let cooldownWait = BlockOperation { [weak self] in
-				// this runs after the task finishes and the completion block runs
-				guard let self = self else { return }
-				let cooldownDate = self.cooldown ?? Date()
-				while Date() < cooldownDate {
-					usleep(10000)
-				}
-				self.currentItem = nil
+		}
+
+		let cooldownWait = BlockOperation { [weak self] in
+			// this runs after the task finishes and the completion block runs
+			guard let self = self else { return }
+			let cooldownDate = self.cooldown ?? Date()
+			while Date() < cooldownDate {
+				usleep(100)
+			}
+			self.currentItem = nil
+			self.executionQueue.sync {
 				self.start()
 			}
-			self.operationQueue.addOperation(cooldownWait)
 		}
+
+		guard task.isReady else { return }
+		guard completionBlock.isReady else { return }
+		guard cooldownWait.isReady else { return }
+		completionBlock.addDependency(task)
+		cooldownWait.addDependency(completionBlock)
 		operationQueue.addOperation(task)
 		operationQueue.addOperation(completionBlock)
+		operationQueue.addOperation(cooldownWait)
 	}
 }
