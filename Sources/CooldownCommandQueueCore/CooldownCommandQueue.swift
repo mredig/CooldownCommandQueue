@@ -15,11 +15,6 @@ public class CooldownCommandQueue {
 		get { internalQueue.sync { _cooldown } }
 		set { internalQueue.sync { _cooldown = newValue } }
 	}
-//	private var _timeout: Date?
-//	private(set) var timeout: Date? {
-//		get { internalQueue.sync { _timeout } }
-//		set { internalQueue.sync { _timeout = newValue } }
-//	}
 
 	private var _currentItem: CooldownCommandOperation?
 	private(set) var currentItem: CooldownCommandOperation? {
@@ -36,11 +31,24 @@ public class CooldownCommandQueue {
 		internalQueue.sync { _operationQueue }
 	}
 
-	public init() {}
+	let errorCleanupTask: (() -> Void)?
+
+	/// In the event of a failed task, the queue will be cleared and the cleanup task will run. The cleanup task is optional and can be anything you wish to pass in.
+	public init(errorCleanupTask: (() -> Void)? = nil) {
+		self.errorCleanupTask = errorCleanupTask
+	}
 
 	public func addTask(_ task: CooldownCommandOperation) {
 		queuedItems.enqueue(task)
 		start()
+	}
+
+	private func errorReset() {
+		print("Errored - resetting CooldownCommandQueue.")
+		while queuedItems.count > 0 {
+			_ = queuedItems.dequeue()
+		}
+		errorCleanupTask?()
 	}
 
 	private func start() {
@@ -54,12 +62,15 @@ public class CooldownCommandQueue {
 
 		let completionBlock = BlockOperation { [weak self] in
 			guard let self = self else { return }
+			guard task.success == true else {
+				self.errorReset()
+				return
+			}
 			guard let cooldown = task.cooldown else { fatalError("Task \(task) failed somehow!") }
 			self.cooldown = Date(timeIntervalSinceNow: cooldown)
 			let cooldownWait = BlockOperation { [weak self] in
 				// this runs after the task finishes and the completion block runs
 				guard let self = self else { return }
-//				usleep(UInt32(Double(1_000_001) * cooldown))
 				let cooldownDate = self.cooldown ?? Date()
 				while Date() < cooldownDate {
 					usleep(10000)

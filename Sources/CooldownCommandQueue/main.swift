@@ -24,6 +24,7 @@ for i in 0...10 {
 	let task = CooldownCommandOperation { cooldownTask in
 		URLSession.shared.dataTask(with: request) { (data, _, error) in
 			if let error = error {
+				cooldownTask(0, false)
 				print("error: \(error)")
 				return
 			}
@@ -37,7 +38,7 @@ for i in 0...10 {
 			print("title: \(title)")
 			print("messages: \(messages)")
 			print(i, Date())
-			cooldownTask(cooldown)
+			cooldownTask(cooldown, true)
 		}.resume()
 	}
 	cooldownCommandQueue.addTask(task)

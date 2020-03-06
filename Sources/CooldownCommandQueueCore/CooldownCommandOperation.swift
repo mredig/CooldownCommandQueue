@@ -8,9 +8,10 @@
 import Foundation
 
 public class CooldownCommandOperation: CommandOperation {
-	public var cooldown: TimeInterval?
+	private(set) var cooldown: TimeInterval?
+	private(set) var success: Bool?
 
-	public typealias CooldownCompletion = (TimeInterval) -> Void
+	public typealias CooldownCompletion = (TimeInterval, Bool) -> Void
 	public typealias CooldownBaseTask = (@escaping CooldownCompletion) -> Void
 
 	let cooldownTask: CooldownBaseTask
@@ -26,8 +27,9 @@ public class CooldownCommandOperation: CommandOperation {
 	}
 
 	public override func start() {
-		let cooldownTaskFinish = { (time: TimeInterval) in
+		let cooldownTaskFinish = { (time: TimeInterval, success: Bool) in
 			self.cooldown = time
+			self.success = success
 			self.state = .isFinished
 		}
 		state = .isExecuting
