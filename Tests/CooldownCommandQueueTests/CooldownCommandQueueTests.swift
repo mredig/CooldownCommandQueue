@@ -17,7 +17,7 @@ class CommandQueueTests: XCTestCase {
 		let iterations = 10000
 		for i in 0..<iterations {
 //			var thisTime = TimeInterval.random(in: 0.00...0.01)
-			let thisTime: TimeInterval = 0.01
+			let thisTime: TimeInterval = 0.001
 			var mockSuccess = NetworkMockingSession { (request) -> (Data?, Int, Error?) in
 				let someInfo: [String: Any] = [
 					"cooldown": thisTime,
