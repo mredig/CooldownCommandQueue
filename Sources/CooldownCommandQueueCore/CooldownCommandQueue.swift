@@ -39,8 +39,17 @@ public class CooldownCommandQueue {
 		self.errorCleanupTask = errorCleanupTask
 	}
 
+	/// Adds an task to the end of the queue
 	public func addTask(_ task: CooldownCommandOperation) {
 		queuedItems.enqueue(task)
+		executionQueue.sync {
+			start()
+		}
+	}
+
+	// Adds a task to the front of the queue
+	public func jumpTask(_ task: CooldownCommandOperation) {
+		queuedItems.jumpQueue(task)
 		executionQueue.sync {
 			start()
 		}

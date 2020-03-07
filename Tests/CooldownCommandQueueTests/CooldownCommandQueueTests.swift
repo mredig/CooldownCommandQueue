@@ -167,6 +167,30 @@ class CommandQueueTests: XCTestCase {
 	}
 
 	func testDelayedAdd() {
+		let commandQueue = CooldownCommandQueue()
+
+		let cooldownDuration: TimeInterval = 2
+		let cooldownCompletionTime = Date(timeIntervalSinceNow: cooldownDuration)
+		let expector = expectation(description: "Delayed add")
+
+		let task = CooldownCommandOperation { cooldownCompletion in
+			cooldownCompletion(cooldownDuration, true)
+		}
+		commandQueue.addTask(task)
+
+		sleep(1)
+		let task2 = CooldownCommandOperation { cooldownCompletion in
+			let now = Date()
+			XCTAssertGreaterThanOrEqual(now.timeIntervalSince1970, cooldownCompletionTime.timeIntervalSince1970)
+			let difference = now.timeIntervalSince1970 - cooldownCompletionTime.timeIntervalSince1970
+			print("task2 started \(difference) seconds after cooldown completed")
+			cooldownCompletion(0, true)
+			expector.fulfill()
+		}
+		commandQueue.addTask(task2)
+
+		wait(for: [expector], timeout: 3)
+
 		// add to queu for 2 second cooldown
 		// add another to queue 1 second later
 		// confirm second add does not run until it's time
