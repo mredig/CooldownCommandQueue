@@ -18,7 +18,7 @@ public class CooldownCommandQueue {
 	}
 
 	private var _currentItem: CooldownCommandOperation?
-	private(set) var currentItem: CooldownCommandOperation? {
+	public private(set) var currentItem: CooldownCommandOperation? {
 		get { propertyQueue.sync { _currentItem } }
 		set { propertyQueue.sync { _currentItem = newValue } }
 	}
@@ -60,6 +60,7 @@ public class CooldownCommandQueue {
 		while queuedItems.count > 0 {
 			_ = queuedItems.dequeue()
 		}
+		currentItem = nil
 		errorCleanupTask?()
 	}
 
@@ -80,6 +81,7 @@ public class CooldownCommandQueue {
 			}
 			guard let cooldown = task.cooldown else { fatalError("Task \(task) failed somehow!") }
 			self.cooldown = Date(timeIntervalSinceNow: cooldown)
+			self.currentItem = nil
 		}
 
 		let cooldownWait = BlockOperation { [weak self] in
@@ -89,7 +91,6 @@ public class CooldownCommandQueue {
 			while Date() < cooldownDate {
 				usleep(100)
 			}
-			self.currentItem = nil
 			self.executionQueue.sync {
 				self.start()
 			}
