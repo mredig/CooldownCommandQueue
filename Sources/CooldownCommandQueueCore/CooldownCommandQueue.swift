@@ -32,11 +32,11 @@ public class CooldownCommandQueue {
 		propertyQueue.sync { _operationQueue }
 	}
 
-	var currentlyExecuting: Bool {
+	public var currentlyExecuting: Bool {
 		queuedItems.count > 0 || currentItem != nil
 	}
 
-	var waitingOnCooldown: Bool {
+	public var waitingOnCooldown: Bool {
 		(cooldown ?? Date(timeIntervalSinceNow: -1)) > Date()
 	}
 
