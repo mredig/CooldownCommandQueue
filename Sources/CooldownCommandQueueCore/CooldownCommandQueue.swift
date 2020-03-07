@@ -32,6 +32,14 @@ public class CooldownCommandQueue {
 		propertyQueue.sync { _operationQueue }
 	}
 
+	var currentlyExecuting: Bool {
+		queuedItems.count > 0 || currentItem != nil
+	}
+
+	var waitingOnCooldown: Bool {
+		(cooldown ?? Date(timeIntervalSinceNow: -1)) > Date()
+	}
+
 	let errorCleanupTask: (() -> Void)?
 
 	/// In the event of a failed task, the queue will be cleared and the cleanup task will run. The cleanup task is optional and can be anything you wish to pass in.
