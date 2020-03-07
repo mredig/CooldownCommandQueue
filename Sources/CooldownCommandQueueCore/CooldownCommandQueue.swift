@@ -40,6 +40,14 @@ public class CooldownCommandQueue {
 		(cooldown ?? Date(timeIntervalSinceNow: -1)) > Date()
 	}
 
+	public var cooldownTime: Date {
+		cooldown ?? Date()
+	}
+
+	public var cooldownRemaining: TimeInterval {
+		cooldownTime.timeIntervalSince1970 - Date().timeIntervalSince1970
+	}
+
 	let errorCleanupTask: (() -> Void)?
 
 	/// In the event of a failed task, the queue will be cleared and the cleanup task will run. The cleanup task is optional and can be anything you wish to pass in.
