@@ -106,4 +106,76 @@ class CommandQueueTests: XCTestCase {
 		}
 	}
 
+	func testCommandQueueError() {
+		let errorExpecter = expectation(description: "Finished error")
+
+		var errorCleanupSuccess = false
+
+		let commandQueue = CooldownCommandQueue {
+			print("Successful error cleanup completion.")
+			errorCleanupSuccess = true
+			errorExpecter.fulfill()
+		}
+
+		var complete1 = false
+		var complete2 = false
+		let cooldown = TimeInterval(1)
+		var op1Completion: Date?
+
+		let operation = CooldownCommandOperation { cooldownCompletion in
+			complete1 = true
+			cooldownCompletion(cooldown, false)
+			op1Completion = Date()
+		}
+
+		let operation2 = CooldownCommandOperation { cooldownCompletion in
+			XCTFail("op2 should not have run!")
+			XCTAssertEqual(complete1, true)
+			XCTAssertEqual(complete2, false)
+			guard let op1completion = op1Completion else {
+				XCTFail("Did not complete first operation before second")
+				return
+			}
+			XCTAssertGreaterThanOrEqual(Date().timeIntervalSince1970, op1completion.timeIntervalSince1970 + cooldown)
+			complete2 = true
+			cooldownCompletion(0, true)
+		}
+
+		commandQueue.addTask(operation)
+		commandQueue.addTask(operation2)
+
+		waitForExpectations(timeout: 1.11) { (error) in
+			if let error = error {
+				XCTFail("Timed out waiting for an expectation: \(error)")
+			}
+		}
+		XCTAssertEqual(errorCleanupSuccess, true)
+
+		let continuationExpecter = expectation(description: "Finished error")
+		let op3 = CooldownCommandOperation { cooldownCompletion in
+			print("Queue continued afterward just fine.")
+			cooldownCompletion(0.01, true)
+			continuationExpecter.fulfill()
+		}
+
+		commandQueue.addTask(op3)
+		waitForExpectations(timeout: 1.11) { (error) in
+			if let error = error {
+				XCTFail("Timed out waiting for an expectation: \(error)")
+			}
+		}
+	}
+
+	func testDelayedAdd() {
+		// add to queu for 2 second cooldown
+		// add another to queue 1 second later
+		// confirm second add does not run until it's time
+	}
+
+	func testJumpQueue() {
+		// add items A and B to queue
+		// add item C to jump the queue before B, while A is on cooldown
+		// confirm order runs in ACB
+	}
+
 }
