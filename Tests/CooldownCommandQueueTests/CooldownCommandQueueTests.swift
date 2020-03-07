@@ -4,7 +4,7 @@ import XCTest
 import NetworkHandler
 
 class CommandQueueTests: XCTestCase {
-	func testCommandQueueWithRNG() {
+	func testLongQueue() {
 		let url = URL(string: "http://localhost:8000")!
 		let request = url.request
 
@@ -15,6 +15,7 @@ class CommandQueueTests: XCTestCase {
 
 
 		let iterations = 1000
+		var iteration = 0
 		for i in 0..<iterations {
 			let thisTime: TimeInterval = 0.001
 			var mockSuccess = NetworkMockingSession { (request) -> (Data?, Int, Error?) in
@@ -41,6 +42,8 @@ class CommandQueueTests: XCTestCase {
 					if id.isMultiple(of: 15) {
 						print(id)
 					}
+					guard iteration == id else { XCTFail("Queue happened out of order"); return }
+					iteration += 1
 
 					cooldownCompletion(cooldown, true)
 					if id == iterations - 1 {
@@ -101,8 +104,6 @@ class CommandQueueTests: XCTestCase {
 				XCTFail("Timed out waiting for an expectation: \(error)")
 			}
 		}
-
-
 	}
 
 }
