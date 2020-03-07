@@ -167,6 +167,9 @@ class CommandQueueTests: XCTestCase {
 	}
 
 	func testDelayedAdd() {
+		// add to queu for 2 second cooldown
+		// add another to queue 1 second later
+		// confirm second add does not run until it's time
 		let commandQueue = CooldownCommandQueue()
 
 		let cooldownDuration: TimeInterval = 2
@@ -190,16 +193,58 @@ class CommandQueueTests: XCTestCase {
 		commandQueue.addTask(task2)
 
 		wait(for: [expector], timeout: 3)
-
-		// add to queu for 2 second cooldown
-		// add another to queue 1 second later
-		// confirm second add does not run until it's time
 	}
 
 	func testJumpQueue() {
 		// add items A and B to queue
 		// add item C to jump the queue before B, while A is on cooldown
 		// confirm order runs in ACB
-	}
 
+		let commandQueue = CooldownCommandQueue()
+
+		let cooldownDuration: TimeInterval = 0.5
+		let expector = expectation(description: "wait for completion")
+
+		var taskADone = false
+		var taskBDone = false
+		var taskCDone = false
+
+		let taskA = CooldownCommandOperation { cooldownCompletion in
+			XCTAssertEqual(taskADone, false)
+			XCTAssertEqual(taskBDone, false)
+			XCTAssertEqual(taskCDone, false)
+			taskADone = true
+			print("A done")
+			cooldownCompletion(cooldownDuration, true)
+		}
+
+		let taskB = CooldownCommandOperation { cooldownCompletion in
+			XCTAssertEqual(taskADone, true)
+			XCTAssertEqual(taskBDone, false)
+			XCTAssertEqual(taskCDone, true)
+			taskBDone = true
+			print("B done")
+			cooldownCompletion(cooldownDuration, true)
+			expector.fulfill()
+		}
+
+		let taskC = CooldownCommandOperation { cooldownCompletion in
+			XCTAssertEqual(taskADone, true)
+			XCTAssertEqual(taskBDone, false)
+			XCTAssertEqual(taskCDone, false)
+			taskCDone = true
+			print("C done")
+			cooldownCompletion(cooldownDuration, true)
+		}
+
+		commandQueue.addTask(taskA)
+		commandQueue.addTask(taskB)
+		commandQueue.jumpTask(taskC)
+
+		wait(for: [expector], timeout: 3)
+
+		XCTAssertEqual(taskADone, true)
+		XCTAssertEqual(taskBDone, true)
+		XCTAssertEqual(taskCDone, true)
+	}
 }
