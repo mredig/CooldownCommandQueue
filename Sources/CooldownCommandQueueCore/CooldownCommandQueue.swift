@@ -120,13 +120,5 @@ public class CooldownCommandQueue {
 		operationQueue.addOperation(task)
 		operationQueue.addOperation(completionBlock)
 		operationQueue.addOperation(cooldownWait)
-
-		weak var wTask = task
-		weak var wCompletionBlock = completionBlock
-		weak var wCooldownWait = cooldownWait
-		
-		DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-			print("Zombie ops delayed:", wTask, wCompletionBlock, wCooldownWait)
-		}
 	}
 }
